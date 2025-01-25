@@ -3,9 +3,9 @@ Simple app to compare investing funds by different categories
 
 
 
-# Run docker containers
+## Run docker containers
 
-## Make docker work with GPUs
+### Make docker work with GPUs
 
 https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
 
