@@ -1,0 +1,40 @@
+services:
+  redis:
+#    image: REPOSITORY_WITH_YOUR_CUSTOM_REDIS_IMAGE_CREATED_WITH_DEPLOY/DOCKER/REDIS/API/DOCKERFILE
+    build:
+      context: ../..
+      dockerfile: deploy/docker/redis/api/Dockerfile
+    container_name: my-redis
+    network_mode: "host"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 2
+    env_file: ../../.env
+  postgres:
+#    image: REPOSITORY_WITH_YOUR_CUSTOM_POSTGRES_IMAGE_CREATED_WITH_DEPLOY/DOCKER/POSTGRES/API/DOCKERFILE
+    build:
+      context: ../..
+      dockerfile: deploy/docker/postgres/api/Dockerfile
+    container_name: my-postgres
+    network_mode: "host"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --username=${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 2
+    env_file: ../../.env
+  api:
+#    image: REPOSITORY_WITH_YOUR_API_IMAGE_CREATED_WITH_DEPLOY/DOCKER/API/DOCKERFILE
+    build:
+      context: ../..
+      dockerfile: deploy/docker/api/Dockerfile
+    container_name: my-api
+    network_mode: "host"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    env_file: ../../.env

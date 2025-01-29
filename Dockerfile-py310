@@ -1,0 +1,3 @@
+# docker build -f Dockerfile-py310 -t python310 .
+
+FROM python@sha256:7a08d7bfedcbf05d15b2bff8f0c86db6dd06bcbaa74c915d2d5585dbd5ba65b0
