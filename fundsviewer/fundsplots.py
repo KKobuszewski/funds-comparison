@@ -3,11 +3,15 @@ import dash_bootstrap_components as dbc
 import plotly.express as px
 import pandas as pd
 
-df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/gapminder_unfiltered.csv')
 
+#import asyncio
 
+#from fundsviewer.serviceutils import event_initialized, wait_for_event
+#asyncio.run( wait_for_event(event_initialized) )
+#from fundsviewer.serviceutils import mainapp
 
-# first graph
+import fundsviewer.fundsviewer
+
 
 app1 = Dash(
     __name__,
@@ -18,14 +22,19 @@ app1 = Dash(
 app1.layout = [
     html.H1(children='Example App with Dash', style={'textAlign':'center'}),
     html.Hr(),
-    dcc.Dropdown(df.country.unique(), 'Canada', id='dropdown-selection'),
+    dcc.Dropdown(
+        list(fundsviewer.fundsviewer.dataframes.keys()),
+        'generali',
+        id='dropdown-selection'
+    ),
     dcc.Graph(id='graph-content')
 ]
+
 
 @callback(
     Output('graph-content', 'figure'),
     Input('dropdown-selection', 'value')
 )
 def update_graph(value):
-    dff = df[df.country==value]
-    return px.line(dff, x='year', y='pop')
+    dff = fundsviewer.fundsviewer.dataframes[value]
+    return px.line(dff, x=dff.index, y=dff.columns)

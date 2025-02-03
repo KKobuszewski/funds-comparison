@@ -32,13 +32,13 @@ def setup_logging_with_formatters() -> None:
     root.addHandler(sys_stdout_handler)
 
 
-def setup_logging_with_correlation_id() -> None:
+def setup_logging_with_correlation_id(level=logging.DEBUG) -> None:
     """Configures logging and include formatters with correlation id"""
     root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
+    root.setLevel(level)
     sys_stdout_handler = logging.StreamHandler(sys.stdout)
-    sys_stdout_handler.setLevel(logging.DEBUG)
-    sys_stdout_formatter = logging.Formatter("%(asctime)s - %(levelname)s - [%(correlation_id)s] - %(message)s")
+    sys_stdout_handler.setLevel(level)
+    sys_stdout_formatter = logging.Formatter("%(levelname)s - %(asctime)s - [%(correlation_id)s] - %(message)s")
     correlation_id_filter = CorrelationIdFilter()
     sys_stdout_handler.setFormatter(sys_stdout_formatter)
     sys_stdout_handler.addFilter(correlation_id_filter)

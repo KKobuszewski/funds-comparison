@@ -1,27 +1,30 @@
-import socket
 import logging
 
 import uvicorn
 
-from fastapi import FastAPI, Response, BackgroundTasks
+from fastapi import FastAPI, Response, BackgroundTasks, status
 from fastapi.requests import Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.middleware.wsgi import WSGIMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.exception_handlers import request_validation_exception_handler
 
-from fundsviewer import fundswiever
 import fundsviewer.fundsplots
-import fundsviewer.utils.logging
-import fundsviewer.utils.errors
+import fundsviewer.fundsviewer
 import fundsviewer.middlewares
+import fundsviewer.utils.logging
+from fundsviewer.utils.errors import APIError
+
 import fundsviewer.serviceutils
+from fundsviewer.serviceutils import mainapp as app
+print('# API state:',app.state.__dict__)
+print('# Dataframes:',fundsviewer.fundsviewer.dataframes.keys())
 
 # set logging with unique process id (correlation_id)
-fundsviewer.utils.logging.setup_logging_with_correlation_id()
+fundsviewer.utils.logging.setup_logging_with_correlation_id(level=logging.INFO)
 
 # define fastapi server
-app = FastAPI(lifespan=fundsviewer.serviceutils.lifespan)
+#app = FastAPI(lifespan=fundsviewer.serviceutils.lifespan)
 app.add_middleware(fundsviewer.middlewares.CorrelationIdMiddleware)
 
 
@@ -56,23 +59,40 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # -------------------------------------- endpoints --------------------------------------
 
 # Define the main API endpoint
+# TODO: get rid of error with favicon.ico -> https://stackoverflow.com/questions/65599686/fastapi-with-uvicorn-getting-404-not-found-error
 @app.get("/")
-def index() -> str:
+def index() -> PlainTextResponse:
     return PlainTextResponse("Hello to investing funds comparer.")
 
 # Mount the Dash app as a sub-application in the FastAPI server
 app.mount("/dashboard", WSGIMiddleware(fundsviewer.fundsplots.app1.server))
 
-@app.post("/table/{request}")
-async def decisions(
-    request: str,
-    background_tasks: BackgroundTasks,
-) -> HTMLResponse:
-    if not request in app.state.dataframes.keys():
-        
-    return HTMLResponse(content=df.to_html(), status_code=200) 
+#@app.post("/table/{request}")
+#async def table(request: str | None = 'generali') -> HTMLResponse:
+    #background_tasks: BackgroundTasks | None = None, # cannot use non-default argument
+#) -> HTMLResponse:
+@app.get("/table/{fundname}")
+async def table(fundname: str) -> HTMLResponse:
+    logging.info(f"Received 'GET /table/' {fundname=}")
+    if fundname in app.state.dataframes.keys():
+        return HTMLResponse(
+            content=app.state.datatables[fundname],
+            status_code=status.HTTP_200_OK
+        )
+    else:
+        return HTMLResponse(
+            content="<html>" + \
+                    "<head><title>Error</title></head>" + \
+                   f"<body><h1>{fundname} is invalid fund name.</h1></body>" + \
+                    "</html>",
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
 
-
+@app.get('/test')
+async def test(request: Request) -> PlainTextResponse:
+    logging.info(f'# test request recieved {request.body()}')
+    print(request)
+    return PlainTextResponse("Test")
 
 
 
@@ -93,7 +113,7 @@ async def decisions(
 if __name__ == "__main__":
     port = 9999
     if fundsviewer.serviceutils.is_port_in_use(port):
-        raise fundsviewer.utils.errors.APIError
+        raise APIError
     logging.info(f'# Running uvicorn server on port {port}.')
     
     uvicorn.run(

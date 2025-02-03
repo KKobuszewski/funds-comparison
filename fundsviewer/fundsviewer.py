@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 from abc import ABC, abstractmethod
+import os
 import sys
 import logging
 
@@ -54,6 +55,8 @@ def webpage_driver(page_url: str):
     
     return driver
 
+def str2float(x):
+    return float(x.replace(" ", "").replace(",", "."))
 
 class FundWebsite(ABC):
     def __init__(self):
@@ -98,7 +101,7 @@ class GeneraliFundWebsite(FundWebsite):
         
         try:
             logging.debug(f'Loading webpage {self.web_url}')
-            WebDriverWait(self.web_driver, 2).until(
+            WebDriverWait(self.web_driver, 3).until(
                 EC.presence_of_element_located((By.CLASS_NAME,"even"))
             )
         except Exception as e:
@@ -134,10 +137,12 @@ class GeneraliFundWebsite(FundWebsite):
             # while link found put it to the list of links
             self.fund_names.append( element.text.split('\n')[0] )
             dfs.append( pd.read_csv(self.data_urls[-1], encoding='iso-8859-15', sep=';', decimal=',') )
-            logging.debug(self.data_urls[-1], self.fund_names[-1])
+            logging.info(f'-> downloading {self.data_urls[-1]}, {self.fund_names[-1]}')
 
         for df in dfs:
             df['Dzieñ wyceny'] = pd.to_datetime(df['Dzieñ wyceny'])
+            if type(df['Wycena'].iloc[0]) == str:
+                df['Wycena'] = df['Wycena'].apply(str2float)
 
         self.dataframe = dfs[0]
         self.dataframe = self.dataframe.rename(columns={'Wycena' : self.fund_names[0]})
@@ -154,17 +159,47 @@ class GeneraliFundWebsite(FundWebsite):
         return self.dataframe
     
     def to_csv(self, path: str='.'):
-        path += '/generali.csv'
+        if not 'generali.csv' in path:
+            path += '/generali.csv'
         
         if self.dataframe is None:
             self.get_data()
         self.dataframe.to_csv(path)
     
+    def from_csv(self, fname: str='.'):
+        if not 'generali.csv' in fname:
+            fname += '/generali.csv'
+        
+        if os.path.isfile(fname):
+            self.dataframe = pd.read_csv(fname, index_col='Day', parse_dates=['Day'])
+            return self.dataframe
+        else:
+            raise FileNotFoundError(f'Cannot find {fname}.')
+    
+
+# ## load data
+logging.info("# Downloading data.")
+dataframes = {}
+htmltables = {}
+    
+generali_downloader = GeneraliFundWebsite()
+logging.info(f"# Downloading data from {generali_downloader.web_url}")
+generali_df = generali_downloader.from_csv() # TODO: Change to downloading for working service
+dataframes['generali'] = generali_df
+htmltables['generali'] = generali_df.to_html()
 
 
-
-
-
+#from fundsviewer.serviceutils import mainapp as app
+## ## load data
+#logging.info("# Downloading data.")
+#app.state.dataframes = {}
+#app.state.datatables = {}
+    
+#generali_downloader = fundsviewer.fundsviewer.GeneraliFundWebsite()
+#logging.info(f"# Downloading data from {generali_downloader.web_url}")
+#generali_df = generali_downloader.from_csv()                              # TODO: Change to downloading for working service
+#app.state.dataframes['generali'] = generali_df
+#app.state.datatables['generali'] = generali_df.to_html()
 
 
 
